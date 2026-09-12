@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Hisab Pro</title>
+<meta name="theme-color" content="#12261F">
+<meta name="description" content="আপনার আয়, ব্যয়, প্রোডাকশন ও ফান্ডের সহজ হিসাব">
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+/* ==========================================================
+   SMART HISAB PRO — Design Tokens
+   Concept: a modern digital "hisab khata" (ledger book) —
+   deep ledger-ink green + brass/taka gold accent.
+   ========================================================== */
+:root{
+  --ink-900:#0E1F19;
+  --ink-800:#12261F;
+  --ink-700:#193A2E;
+  --ink-600:#1F4A3A;
+  --paper:#F6F3EA;
+  --paper-2:#FFFFFF;
+  --brass:#C9962C;
+  --brass-light:#E8C878;
+  --green:#2F8F6B;
+  --rust:#B4483C;
+  --ink-text:#132019;
+  --muted:#5B6E64;
+  --line: rgba(19,32,25,0.10);
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.6);
+  --shadow: 0 8px 30px rgba(14,31,25,0.10);
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --font-body:'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  --font-display:'Tiro Bangla', 'Hind Siliguri', serif;
+  color-scheme: light;
+}
+[data-theme="dark"]{
+  --paper:#0E1B16;
+  --paper-2:#152922;
+  --ink-text:#EDE7D8;
+  --muted:#9FB3A9;
+  --line: rgba(237,231,216,0.10);
+  --glass-bg: rgba(21,41,34,0.55);
+  --glass-border: rgba(255,255,255,0.08);
+  --shadow: 0 8px 30px rgba(0,0,0,0.35);
+  color-scheme: dark;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-body);
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgba(201,150,44,0.10), transparent 60%),
+    var(--paper);
+  color:var(--ink-text);
+  min-height:100vh;
+  transition:background .35s ease, color .35s ease;
+  padding-bottom:84px;
+}
+h1,h2,h3,.display{font-family:var(--font-display);}
+::selection{background:var(--brass-light); color:var(--ink-900);}
+button{font-family:inherit;}
+a{color:inherit;}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 18px 12px;
+  backdrop-filter:blur(14px);
+  background:linear-gradient(180deg, var(--paper) 60%, transparent);
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand-mark{
+  width:38px;height:38px;border-radius:12px;
+  background:linear-gradient(135deg, var(--brass), var(--green));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700; color:#12211B; font-size:18px; font-family:var(--font-display);
+  box-shadow: var(--shadow);
+}
+.brand-text h1{margin:0;font-size:18px;line-height:1.1;}
+.brand-text span{font-size:11px; color:var(--muted);}
+.top-actions{display:flex; align-items:center; gap:8px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+  background:var(--glass-bg); backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .15s ease, background .2s ease;
+}
+.icon-btn:active{transform:scale(0.92);}
+.sync-pill{
+  display:flex; align-items:center; gap:6px;
+  font-size:11px; color:var(--muted); padding:6px 10px;
+  border-radius:20px; border:1px solid var(--line); background:var(--glass-bg);
+}
+.sync-dot{width:7px;height:7px;border-radius:50%; background:var(--green);}
+.sync-dot.syncing{background:var(--brass); animation:pulse 1s infinite;}
+.sync-dot.offline{background:var(--rust);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ---------- Layout ---------- */
+.container{max-width:520px; margin:0 auto; padding:0 16px;}
+.view{display:none; animation:fadein .25s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+
+/* ---------- Glass cards ---------- */
+.card{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(16px) saturate(160%);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  padding:18px;
+  margin-bottom:14px;
+}
+.card h3{margin:0 0 12px; font-size:15px; font-weight:600;}
+
+/* Dashboard summary grid */
+.summary-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+.stat-card{
+  border-radius:var(--radius-md); padding:16px;
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  backdrop-filter:blur(16px);
+  position:relative; overflow:hidden;
+}
+.stat-card .label{font-size:12px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+.stat-card .value{font-size:21px; font-weight:700; font-family:var(--font-display);}
+.stat-card.accent-green{border-top:3px solid var(--green);}
+.stat-card.accent-brass{border-top:3px solid var(--brass);}
+.stat-card.accent-rust{border-top:3px solid var(--rust);}
+.stat-card.accent-ink{border-top:3px solid var(--ink-600);}
+
+/* ---------- Buttons ---------- */
+.btn{
+  border:none; border-radius:var(--radius-sm); padding:12px 18px;
+  font-weight:600; font-size:14px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:8px; justify-content:center;
+  transition:transform .15s ease, box-shadow .2s ease, opacity .2s;
+}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:linear-gradient(135deg, var(--brass), var(--brass-light)); color:#1B2A20; box-shadow:0 6px 18px rgba(201,150,44,0.35);}
+.btn-outline{background:transparent; border:1.5px solid var(--line); color:var(--ink-text);}
+.btn-ghost{background:var(--glass-bg); color:var(--ink-text); border:1px solid var(--line);}
+.btn-danger{background:rgba(180,72,60,0.12); color:var(--rust); border:1px solid rgba(180,72,60,0.3);}
+.btn-block{width:100%;}
+.fab{
+  position:fixed; right:18px; bottom:92px; z-index:60;
+  width:56px;height:56px;border-radius:18px;
+  background:linear-gradient(135deg, var(--brass), var(--green));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 24px rgba(47,143,107,0.35);
+  border:none; cursor:pointer; color:#0E1F19; font-size:26px;
+  transition:transform .2s ease;
+}
+.fab:active{transform:scale(0.9) rotate(90deg);}
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:60;
+  display:flex; justify-content:space-around;
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  background:var(--glass-bg); backdrop-filter:blur(20px) saturate(160%);
+  border-top:1px solid var(--line);
+}
+.nav-item{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  color:var(--muted); font-size:10.5px; background:none; border:none;
+  padding:6px 8px; border-radius:12px; cursor:pointer; flex:1;
+  transition:color .2s ease;
+}
+.nav-item svg{width:21px;height:21px;}
+.nav-item.active{color:var(--brass);}
+.nav-item.active svg{stroke:var(--brass);}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%; padding:12px 14px; border-radius:var(--radius-sm);
+  border:1.5px solid var(--line); background:var(--paper-2);
+  color:var(--ink-text); font-family:inherit; font-size:14.5px;
+  transition:border-color .2s ease;
+}
+.field input:focus, .field select:focus, .field textarea:focus{
+  outline:none; border-color:var(--brass);
+}
+.segmented{display:flex; border:1.5px solid var(--line); border-radius:var(--radius-sm); overflow:hidden;}
+.segmented button{
+  flex:1; padding:10px; border:none; background:transparent; color:var(--muted);
+  font-weight:600; font-size:13px; cursor:pointer; transition:all .2s ease;
+}
+.segmented button.active{background:var(--brass); color:#1B2A20;}
+
+/* ---------- History list ---------- */
+.tabs-row{display:flex; gap:8px; overflow-x:auto; padding:4px 0 12px; scrollbar-width:none;}
+.tabs-row::-webkit-scrollbar{display:none;}
+.chip{
+  padding:8px 16px; border-radius:20px; border:1.5px solid var(--line);
+  background:var(--glass-bg); font-size:13px; white-space:nowrap; cursor:pointer;
+  color:var(--muted); font-weight:600;
+}
+.chip.active{background:var(--ink-600); color:#fff; border-color:var(--ink-600);}
+[data-theme="dark"] .chip.active{background:var(--brass); color:#1B2A20; border-color:var(--brass);}
+.search-box{position:relative; margin-bottom:10px;}
+.search-box input{padding-left:40px;}
+.search-box svg{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:16px; height:16px; opacity:.5;}
+
+.ledger-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 4px; border-bottom:1px solid var(--line);
+}
+.ledger-row:last-child{border-bottom:none;}
+.ledger-left{display:flex; gap:12px; align-items:center;}
+.ledger-icon{
+  width:40px;height:40px;border-radius:12px; display:flex;align-items:center;justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.ledger-icon.in{background:rgba(47,143,107,0.15); color:var(--green);}
+.ledger-icon.out{background:rgba(180,72,60,0.15); color:var(--rust);}
+.ledger-title{font-weight:600; font-size:14px;}
+.ledger-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+.ledger-amt{font-weight:700; font-size:14.5px; font-family:var(--font-display);}
+.ledger-amt.in{color:var(--green);}
+.ledger-amt.out{color:var(--rust);}
+
+/* ---------- Skeletons ---------- */
+.skel{
+  background:linear-gradient(90deg, var(--line) 25%, rgba(201,150,44,0.15) 50%, var(--line) 75%);
+  background-size:200% 100%; animation:shimmer 1.3s infinite;
+  border-radius:8px;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-row{height:56px; margin-bottom:10px; border-radius:12px;}
+.skel-stat{height:74px; border-radius:14px;}
+
+/* ---------- Toasts ---------- */
+.toast-wrap{position:fixed; top:14px; left:0; right:0; z-index:200; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none;}
+.toast{
+  pointer-events:auto;
+  max-width:90%; padding:12px 18px; border-radius:14px;
+  background:var(--ink-900); color:#F6F3EA; font-size:13.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3);
+  display:flex; align-items:center; gap:8px;
+  animation:toastin .25s ease;
+}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--rust);}
+@keyframes toastin{from{opacity:0; transform:translateY(-12px)} to{opacity:1; transform:none}}
+
+/* ---------- Modal (bottom sheet) ---------- */
+.sheet-backdrop{
+  position:fixed; inset:0; background:rgba(10,18,14,0.45); backdrop-filter:blur(4px);
+  z-index:150; display:none; align-items:flex-end; justify-content:center;
+}
+.sheet-backdrop.open{display:flex;}
+.sheet{
+  width:100%; max-width:520px; background:var(--paper-2);
+  border-radius:24px 24px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom));
+  max-height:88vh; overflow-y:auto;
+  animation:sheetup .28s cubic-bezier(.2,.8,.2,1);
+  box-shadow:0 -10px 40px rgba(0,0,0,0.25);
+}
+@keyframes sheetup{from{transform:translateY(100%)} to{transform:translateY(0)}}
+.sheet-handle{width:40px;height:4px;background:var(--line); border-radius:4px; margin:0 auto 16px;}
+.sheet-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+.sheet-header h2{margin:0; font-size:17px;}
+
+/* misc */
+.muted{color:var(--muted); font-size:13px;}
+.row{display:flex; gap:10px;}
+.row > *{flex:1;}
+.section-title{font-size:13px; color:var(--muted); margin:22px 0 10px; font-weight:600;}
+.empty-state{text-align:center; padding:40px 10px; color:var(--muted);}
+.empty-state svg{width:52px; height:52px; opacity:.4; margin-bottom:10px;}
+canvas{max-width:100%;}
+</style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">৳</div>
+    <div class="brand-text">
+      <h1>Smart Hisab Pro</h1>
+      <span id="greeting">শুভ দিন, তানজির!</span>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="sync-pill"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">প্রস্তুত</span></div>
+    <button class="icon-btn" id="themeToggle" title="ডার্ক মোড">
+      <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ================= DASHBOARD ================= -->
+  <section class="view active" id="view-dashboard">
+    <div class="summary-grid" id="statGrid">
+      <div class="stat-card accent-brass"><div class="skel skel-stat"></div></div>
+      <div class="stat-card accent-ink"><div class="skel skel-stat"></div></div>
+      <div class="stat-card accent-rust"><div class="skel skel-stat"></div></div>
+      <div class="stat-card accent-green"><div class="skel skel-stat"></div></div>
+    </div>
+
+    <div class="card">
+      <h3>খরচের ভাগ (এই মাস)</h3>
+      <canvas id="doughnutChart" height="220"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>আয় বনাম খরচ — গত ৬ মাস</h3>
+      <canvas id="trendChart" height="220"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>সাম্প্রতিক লেনদেন</h3>
+      <div id="recentList"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= PRODUCTION ================= -->
+  <section class="view" id="view-production">
+    <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="stat-card accent-green"><div class="label">মোট আয় (Earned)</div><div class="value" id="prodEarned">৳০</div></div>
+      <div class="stat-card accent-brass"><div class="label">উত্তোলন (Withdrawn)</div><div class="value" id="prodWithdrawn">৳০</div></div>
+    </div>
+    <div class="card">
+      <h3>প্রোডাকশন লেজার</h3>
+      <div id="prodList"><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= EXPENSE ANALYTICS ================= -->
+  <section class="view" id="view-expense">
+    <div class="card">
+      <h3>রেঞ্জ বাছুন</h3>
+      <div class="tabs-row" id="rangeChips">
+        <div class="chip active" data-range="this_month">এই মাস</div>
+        <div class="chip" data-range="last_month">গত মাস</div>
+        <div class="chip" data-range="custom">কাস্টম</div>
+      </div>
+      <div class="row" id="customRange" style="display:none; margin-top:10px;">
+        <div class="field"><label>শুরু</label><input type="date" id="rangeFrom"></div>
+        <div class="field"><label>শেষ</label><input type="date" id="rangeTo"></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-outline btn-block" id="exportCsvBtn">CSV এক্সপোর্ট</button>
+        <button class="btn btn-outline btn-block" id="exportPdfBtn">PDF এক্সপোর্ট</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>ক্যাটাগরি অনুযায়ী খরচ</h3>
+      <canvas id="expenseCategoryChart" height="220"></canvas>
+      <div id="expenseCategoryList" style="margin-top:12px;"></div>
+    </div>
+  </section>
+
+  <!-- ================= FUNDS ================= -->
+  <section class="view" id="view-funds">
+    <div class="row" style="margin-bottom:14px;">
+      <button class="btn btn-primary btn-block" id="newFundBtn">+ নতুন ফান্ড</button>
+    </div>
+    <div id="fundList"><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+    <div class="section-title">আর্কাইভড ফান্ড</div>
+    <div id="fundArchivedList"></div>
+  </section>
+
+  <!-- ================= HISTORY ================= -->
+  <section class="view" id="view-history">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" id="searchInput" placeholder="খুঁজুন — খাত, নাম, নোট...">
+    </div>
+    <div class="tabs-row" id="historyTabs">
+      <div class="chip active" data-filter="all">সব</div>
+      <div class="chip" data-filter="income">আয়</div>
+      <div class="chip" data-filter="expense">খরচ</div>
+      <div class="chip" data-filter="production">প্রোডাকশন</div>
+      <div class="chip" data-filter="loan">লোন</div>
+      <div class="chip" data-filter="fund">ফান্ড</div>
+    </div>
+    <div class="card" style="padding:8px 14px;">
+      <div id="historyList"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" id="fabAdd">+</button>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" data-view="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+    ড্যাশবোর্ড
+  </button>
+  <button class="nav-item" data-view="production">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l4-4h10l4 4"/><path d="M3 7h18v13a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/><path d="M9 12h6"/></svg>
+    প্রোডাকশন
+  </button>
+  <button class="nav-item" data-view="expense">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-6"/></svg>
+    এনালিটিক্স
+  </button>
+  <button class="nav-item" data-view="funds">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 9.5a2.5 2.5 0 012.5-1.5h1a2 2 0 010 4h-1a2 2 0 000 4h1a2.5 2.5 0 002.5-1.5"/></svg>
+    ফান্ড
+  </button>
+  <button class="nav-item" data-view="history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+    হিস্ট্রি
+  </button>
+</nav>
+
+<!-- ============ BOTTOM SHEET (Add/Edit forms) ============ -->
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet" id="sheetContent">
+    <div class="sheet-handle"></div>
+    <div id="sheetBody"><!-- injected forms --></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURATION — replace with your deployed Apps Script URL
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycby05k0uRCsTg6tNyaBkcMJkJXv28HrnJtsgBAXm3ZmHDKHIUrjcGdV76ZU9TB4fZLmOPA/exec';
+const CACHE_KEY = 'hisab_pro_cache_v1';
+const THEME_KEY = 'hisab_pro_theme';
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let DATA = { Income:[], Expense:[], Production:[], Loan:[], Fund:[], Fund_Transaction:[] };
+let charts = {};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function bn(num){
+  // Format number with Bengali-friendly grouping, keep digits Latin for reliability
+  const n = Number(num)||0;
+  return '৳' + n.toLocaleString('en-IN', {maximumFractionDigits:0});
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function monthKey(d){ const dt = new Date(d); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); }
+
+function toast(msg, type){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 2600);
+}
+
+function setSyncState(state){
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  dot.className = 'sync-dot';
+  if(state==='syncing'){ dot.classList.add('syncing'); label.textContent='সিঙ্ক হচ্ছে...'; }
+  else if(state==='offline'){ dot.classList.add('offline'); label.textContent='অফলাইন'; }
+  else { label.textContent='সম্পন্ন'; }
+}
+
+/* ============================================================
+   DATA LAYER — cache-first, network revalidate
+   ============================================================ */
+function loadCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    if(raw){ DATA = JSON.parse(raw); return true; }
+  }catch(e){}
+  return false;
+}
+function saveCache(){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify(DATA)); }catch(e){}
+}
+
+async function fetchAll(showToastOnSuccess){
+  if(!navigator.onLine){ setSyncState('offline'); return false; }
+  setSyncState('syncing');
+  try{
+    const res = await fetch(API_URL + '?action=getAll', { method:'GET' });
+    const json = await res.json();
+    if(json.ok){
+      DATA = json.data;
+      saveCache();
+      renderAll();
+      setSyncState('idle');
+      if(showToastOnSuccess) toast('ডেটা সিঙ্ক সম্পন্ন হয়েছে', 'success');
+      return true;
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  }catch(err){
+    setSyncState('offline');
+    toast('সিঙ্ক ব্যর্থ — অফলাইন ডেটা দেখানো হচ্ছে', 'error');
+    return false;
+  }
+}
+
+async function postAction(sheet, action, payload){
+  if(!navigator.onLine){
+    toast('ইন্টারনেট নেই — অনলাইনে এসে আবার চেষ্টা করুন', 'error');
+    return {ok:false};
+  }
+  setSyncState('syncing');
+  try{
+    const res = await fetch(API_URL, {
+      method:'POST',
+      body: JSON.stringify({ sheet, action, payload })
+    });
+    const json = await res.json();
+    setSyncState(json.ok ? 'idle' : 'offline');
+    return json;
+  }catch(err){
+    setSyncState('offline');
+    toast('সংযোগ ব্যর্থ হয়েছে', 'error');
+    return {ok:false, error: err.message};
+  }
+}
+
+/* ============================================================
+   COMPUTED HELPERS
+   ============================================================ */
+function totalIncome(){ return DATA.Income.reduce((s,r)=>s+Number(r.Amount||0),0); }
+function totalExpense(){ return DATA.Expense.reduce((s,r)=>s+Number(r.Amount||0),0); }
+function totalLoanTaken(){ return DATA.Loan.reduce((s,r)=>s+Number(r['Loan Taken']||0),0); }
+function totalLoanPaid(){ return DATA.Loan.reduce((s,r)=>s+Number(r['Loan Paid']||0),0); }
+function loanRemaining(){ return totalLoanTaken()-totalLoanPaid(); }
+function prodEarnedTotal(){ return DATA.Production.filter(r=>r.Type==='Work').reduce((s,r)=>s+Number(r.Earned||0),0); }
+function prodWithdrawnTotal(){ return DATA.Production.filter(r=>r.Type==='Withdrawal').reduce((s,r)=>s+Number(r.Received||r.Earned||0),0); }
+function companyDue(){ return prodEarnedTotal()-prodWithdrawnTotal(); }
+function cashInHand(){ return totalIncome() + prodWithdrawnTotal() - totalExpense() - totalLoanPaid() + totalLoanTaken()*0; }
+
+function uniqueCategories(sheet){
+  const set = new Set(DATA[sheet].map(r=>r.Category).filter(Boolean));
+  return Array.from(set);
+}
+
+/* ============================================================
+   RENDER: DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = `
+    <div class="stat-card accent-brass"><div class="label">💰 হাতে নগদ</div><div class="value">${bn(cashInHand())}</div></div>
+    <div class="stat-card accent-ink"><div class="label">🏭 কোম্পানি বকেয়া</div><div class="value">${bn(companyDue())}</div></div>
+    <div class="stat-card accent-rust"><div class="label">📉 মোট খরচ</div><div class="value">${bn(totalExpense())}</div></div>
+    <div class="stat-card accent-green"><div class="label">🏦 লোন বাকি</div><div class="value">${bn(loanRemaining())}</div></div>
+  `;
+  renderDoughnut();
+  renderTrend();
+  renderRecent();
+}
+
+function renderRecent(){
+  const all = [
+    ...DATA.Income.map(r=>({...r, _type:'income'})),
+    ...DATA.Expense.map(r=>({...r, _type:'expense'})),
+  ].sort((a,b)=> new Date(b.Date)-new Date(a.Date)).slice(0,6);
+
+  const list = document.getElementById('recentList');
+  if(all.length===0){ list.innerHTML = emptyState('কোনো লেনদেন নেই'); return; }
+  list.innerHTML = all.map(r=>{
+    const isIn = r._type==='income';
+    return `<div class="ledger-row">
+      <div class="ledger-left">
+        <div class="ledger-icon ${isIn?'in':'out'}">${isIn?'↓':'↑'}</div>
+        <div><div class="ledger-title">${r.Category||'—'}</div><div class="ledger-sub">${r.Date}</div></div>
+      </div>
+      <div class="ledger-amt ${isIn?'in':'out'}">${isIn?'+':'-'}${bn(r.Amount)}</div>
+    </div>`;
+  }).join('');
+}
+
+function emptyState(msg){
+  return `<div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>
+    <div>${msg}</div>
+  </div>`;
+}
+
+function chartColors(){
+  return ['#C9962C','#2F8F6B','#B4483C','#1F4A3A','#E8C878','#5B6E64','#193A2E','#8A6D3B'];
+}
+
+function renderDoughnut(){
+  const now = new Date();
+  const ym = monthKey(now);
+  const monthly = DATA.Expense.filter(r=>monthKey(r.Date)===ym);
+  const byCat = {};
+  monthly.forEach(r=>{ byCat[r.Category]=(byCat[r.Category]||0)+Number(r.Amount||0); });
+  const labels = Object.keys(byCat);
+  const values = Object.values(byCat);
+
+  const ctx = document.getElementById('doughnutChart');
+  if(charts.doughnut) charts.doughnut.destroy();
+  if(labels.length===0){ ctx.parentElement.querySelector('canvas').style.display='none'; return; }
+  ctx.style.display='block';
+  charts.doughnut = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:values, backgroundColor:chartColors(), borderWidth:0 }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{ color: getComputedStyle(document.body).getPropertyValue('--ink-text'), boxWidth:12, font:{family:'Hind Siliguri'} } } }, cutout:'62%' }
+  });
+}
+
+function renderTrend(){
+  const months = [];
+  const now = new Date();
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push({ key: monthKey(d), label: d.toLocaleDateString('bn-BD',{month:'short'}) });
+  }
+  const incomeSeries = months.map(m => DATA.Income.filter(r=>monthKey(r.Date)===m.key).reduce((s,r)=>s+Number(r.Amount||0),0));
+  const expenseSeries = months.map(m => DATA.Expense.filter(r=>monthKey(r.Date)===m.key).reduce((s,r)=>s+Number(r.Amount||0),0));
+
+  const ctx = document.getElementById('trendChart');
+  if(charts.trend) charts.trend.destroy();
+  const textColor = getComputedStyle(document.body).getPropertyValue('--ink-text');
+  charts.trend = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: months.map(m=>m.label),
+      datasets:[
+        { label:'আয়', data:incomeSeries, backgroundColor:'#2F8F6B', borderRadius:6 },
+        { label:'খরচ', data:expenseSeries, backgroundColor:'#B4483C', borderRadius:6 }
+      ]
+    },
+    options:{
+      plugins:{ legend:{ position:'bottom', labels:{ color:textColor, font:{family:'Hind Siliguri'} } } },
+      scales:{
+        x:{ ticks:{ color:textColor }, grid:{ display:false } },
+        y:{ ticks:{ color:textColor }, grid:{ color:'rgba(128,128,128,0.15)' } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   RENDER: PRODUCTION
+   ============================================================ */
+function renderProduction(){
+  document.getElementById('prodEarned').textContent = bn(prodEarnedTotal());
+  document.getElementById('prodWithdrawn').textContent = bn(prodWithdrawnTotal());
+  const list = document.getElementById('prodList');
+  const rows = [...DATA.Production].sort((a,b)=>new Date(b.Date)-new Date(a.Date));
+  if(rows.length===0){ list.innerHTML = emptyState('কোনো প্রোডাকশন এন্ট্রি নেই'); return; }
+  list.innerHTML = rows.map(r=>{
+    const isWork = r.Type==='Work';
+    const amt = isWork ? r.Earned : (r.Received||r.Earned);
+    return `<div class="ledger-row">
+      <div class="ledger-left">
+        <div class="ledger-icon ${isWork?'in':'out'}">${isWork?'✓':'↑'}</div>
+        <div>
+          <div class="ledger-title">${r['Work Name']||(isWork?'কাজ':'উত্তোলন')}</div>
+          <div class="ledger-sub">${r.Date} ${isWork ? `· ${r.Size||''} ${r.Color||''} · ${r.Pcs||0} পিস (${r.Dozen||0} ডজন)` : (r.Note||'') }</div>
+        </div>
+      </div>
+      <div class="ledger-amt ${isWork?'in':'out'}">${isWork?'+':'-'}${bn(amt)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   RENDER: EXPENSE ANALYTICS
+   ============================================================ */
+let currentRange = 'this_month';
+function getRangeDates(){
+  const now = new Date();
+  if(currentRange==='this_month'){
+    return [new Date(now.getFullYear(), now.getMonth(),1), new Date(now.getFullYear(), now.getMonth()+1,0)];
+  }
+  if(currentRange==='last_month'){
+    return [new Date(now.getFullYear(), now.getMonth()-1,1), new Date(now.getFullYear(), now.getMonth(),0)];
+  }
+  const from = document.getElementById('rangeFrom').value;
+  const to = document.getElementById('rangeTo').value;
+  return [from?new Date(from):new Date(0), to?new Date(to):now];
+}
+
+function filteredExpenses(){
+  const [from,to] = getRangeDates();
+  return DATA.Expense.filter(r=>{
+    const d = new Date(r.Date);
+    return d>=from && d<=to;
+  });
+}
+
+function renderExpenseAnalytics(){
+  const rows = filteredExpenses();
+  const byCat = {};
+  rows.forEach(r=>{ byCat[r.Category]=(byCat[r.Category]||0)+Number(r.Amount||0); });
+  const total = Object.values(byCat).reduce((a,b)=>a+b,0);
+  const labels = Object.keys(byCat);
+  const values = Object.values(byCat);
+
+  const ctx = document.getElementById('expenseCategoryChart');
+  if(charts.expCat) charts.expCat.destroy();
+  const textColor = getComputedStyle(document.body).getPropertyValue('--ink-text');
+  charts.expCat = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data:values, backgroundColor:chartColors(), borderRadius:8 }] },
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor}, grid:{color:'rgba(128,128,128,.15)'}}, y:{ticks:{color:textColor}, grid:{display:false}} } }
+  });
+
+  const listEl = document.getElementById('expenseCategoryList');
+  if(labels.length===0){ listEl.innerHTML = emptyState('এই রেঞ্জে কোনো খরচ নেই'); return; }
+  listEl.innerHTML = labels.map((cat,i)=>{
+    const pct = total ? ((values[i]/total)*100).toFixed(1) : 0;
+    return `<div class="ledger-row">
+      <div class="ledger-left"><div class="ledger-icon out" style="background:${chartColors()[i%8]}22; color:${chartColors()[i%8]}">${pct}%</div>
+      <div><div class="ledger-title">${cat}</div></div></div>
+      <div class="ledger-amt out">${bn(values[i])}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Export ---- */
+function exportCSV(){
+  const rows = filteredExpenses();
+  if(rows.length===0){ toast('এক্সপোর্ট করার মতো ডেটা নেই','error'); return; }
+  const header = ['Date','Category','Amount','Note'];
+  const csv = [header.join(',')].concat(
+    rows.map(r=>[r.Date, r.Category, r.Amount, (r.Note||'').replace(/,/g,';')].join(','))
+  ).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `expense-report-${todayISO()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV ডাউনলোড হয়েছে','success');
+}
+
+function exportPDF(){
+  const rows = filteredExpenses();
+  if(rows.length===0){ toast('এক্সপোর্ট করার মতো ডেটা নেই','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text('Smart Hisab Pro - Expense Report', 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${todayISO()}`, 14, 23);
+  doc.autoTable({
+    startY: 28,
+    head: [['Date','Category','Amount','Note']],
+    body: rows.map(r=>[r.Date, r.Category, Number(r.Amount||0).toFixed(0), r.Note||'']),
+    styles:{ fontSize:9 },
+    headStyles:{ fillColor:[25,58,46] }
+  });
+  const total = rows.reduce((s,r)=>s+Number(r.Amount||0),0);
+  doc.text(`Total: ${total.toFixed(0)}`, 14, doc.lastAutoTable.finalY + 10);
+  doc.save(`expense-report-${todayISO()}.pdf`);
+  toast('PDF ডাউনলোড হয়েছে','success');
+}
+
+/* ============================================================
+   RENDER: FUNDS
+   ============================================================ */
+function fundBalance(fundId){
+  const txns = DATA.Fund_Transaction.filter(t=>String(t['Fund ID'])===String(fundId));
+  const inSum = txns.filter(t=>t.Type==='In').reduce((s,t)=>s+Number(t.Amount||0),0);
+  const outSum = txns.filter(t=>t.Type==='Out').reduce((s,t)=>s+Number(t.Amount||0),0);
+  return inSum - outSum;
+}
+
+function renderFunds(){
+  const active = DATA.Fund.filter(f=>f.Status!=='Archived');
+  const archived = DATA.Fund.filter(f=>f.Status==='Archived');
+
+  const render = (funds) => funds.map(f=>{
+    const bal = fundBalance(f.ID);
+    const pct = f['Target Budget'] ? Math.min(100,(bal/f['Target Budget'])*100) : 0;
+    return `<div class="card" data-fund="${f.ID}">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">${f['Fund Name']}</h3>
+        <span class="muted">${f.Status==='Archived'?'আর্কাইভড':'সক্রিয়'}</span>
+      </div>
+      <div style="margin:10px 0;">
+        <div style="height:8px; background:var(--line); border-radius:6px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--brass),var(--green));"></div>
+        </div>
+        <div class="muted" style="margin-top:6px;">${bn(bal)} / ${bn(f['Target Budget']||0)}</div>
+      </div>
+      <div class="row">
+        <button class="btn btn-outline" onclick="openFundTxn('${f.ID}','In')">জমা</button>
+        <button class="btn btn-outline" onclick="openFundTxn('${f.ID}','Out')">খরচ</button>
+        ${f.Status!=='Archived' ? `<button class="btn btn-ghost" onclick="archiveFund('${f.ID}')">আর্কাইভ</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fundList').innerHTML = active.length ? render(active) : emptyState('কোনো সক্রিয় ফান্ড নেই');
+  document.getElementById('fundArchivedList').innerHTML = archived.length ? render(archived) : `<div class="muted" style="padding:8px;">কোনো আর্কাইভড ফান্ড নেই</div>`;
+}
+
+async function archiveFund(id){
+  const fund = DATA.Fund.find(f=>String(f.ID)===String(id));
+  if(!fund) return;
+  const payload = {...fund, Status:'Archived'};
+  const res = await postAction('Fund','update',payload);
+  if(res.ok){ toast('ফান্ড আর্কাইভ হয়েছে','success'); await fetchAll(); }
+}
+
+/* ============================================================
+   RENDER: HISTORY
+   ============================================================ */
+let historyFilter = 'all';
+let searchTerm = '';
+
+function allHistoryRows(){
+  const inc = DATA.Income.map(r=>({...r, _cat:'income', _title:r.Category, _sub:r.Date, _amt:r.Amount, _dir:'in'}));
+  const exp = DATA.Expense.map(r=>({...r, _cat:'expense', _title:r.Category, _sub:r.Date, _amt:r.Amount, _dir:'out'}));
+  const prod = DATA.Production.map(r=>({...r, _cat:'production', _title:r['Work Name']||r.Type, _sub:r.Date, _amt:r.Type==='Work'?r.Earned:r.Received, _dir:r.Type==='Work'?'in':'out'}));
+  const loan = DATA.Loan.map(r=>({...r, _cat:'loan', _title:r.Description, _sub:r.Date, _amt:r['Loan Taken']||r['Loan Paid'], _dir:r['Loan Taken']?'in':'out'}));
+  const fund = DATA.Fund_Transaction.map(r=>({...r, _cat:'fund', _title:r['Category/Note']||'ফান্ড লেনদেন', _sub:r.Date, _amt:r.Amount, _dir:r.Type==='In'?'in':'out'}));
+  return [...inc,...exp,...prod,...loan,...fund].sort((a,b)=>new Date(b.Date)-new Date(a.Date));
+}
+
+function renderHistory(){
+  let rows = allHistoryRows();
+  if(historyFilter!=='all') rows = rows.filter(r=>r._cat===historyFilter);
+  if(searchTerm){
+    const t = searchTerm.toLowerCase();
+    rows = rows.filter(r => JSON.stringify(r).toLowerCase().includes(t));
+  }
+  const list = document.getElementById('historyList');
+  if(rows.length===0){ list.innerHTML = emptyState('কোনো ফলাফল পাওয়া যায়নি'); return; }
+  list.innerHTML = rows.slice(0,150).map(r=>{
+    const isIn = r._dir==='in';
+    return `<div class="ledger-row">
+      <div class="ledger-left">
+        <div class="ledger-icon ${isIn?'in':'out'}">${isIn?'↓':'↑'}</div>
+        <div><div class="ledger-title">${r._title||'—'}</div><div class="ledger-sub">${r._sub} · ${labelForCat(r._cat)}</div></div>
+      </div>
+      <div class="ledger-amt ${isIn?'in':'out'}">${isIn?'+':'-'}${bn(r._amt)}</div>
+    </div>`;
+  }).join('');
+}
+function labelForCat(c){
+  return {income:'আয়', expense:'খরচ', production:'প্রোডাকশন', loan:'লোন', fund:'ফান্ড'}[c]||c;
+}
+
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll(){
+  renderDashboard();
+  renderProduction();
+  renderExpenseAnalytics();
+  renderFunds();
+  renderHistory();
+}
+
+/* ============================================================
+   BOTTOM SHEET FORMS (Add entries)
+   ============================================================ */
+function openSheet(html){
+  document.getElementById('sheetBody').innerHTML = html;
+  document.getElementById('sheetBackdrop').classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('sheetBackdrop').classList.remove('open');
+}
+document.getElementById('sheetBackdrop').addEventListener('click', e=>{
+  if(e.target.id==='sheetBackdrop') closeSheet();
+});
+
+function categoryDatalist(sheet, id){
+  const cats = uniqueCategories(sheet);
+  return `<datalist id="${id}">${cats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
+}
+
+function openAddMenu(){
+  openSheet(`
+    <div class="sheet-header"><h2>নতুন এন্ট্রি</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <button class="btn btn-outline" onclick="formIncome()">➕ আয়</button>
+      <button class="btn btn-outline" onclick="formExpense()">➖ খরচ</button>
+      <button class="btn btn-outline" onclick="formProduction()">🏭 প্রোডাকশন</button>
+      <button class="btn btn-outline" onclick="formLoan()">🏦 লোন</button>
+    </div>
+  `);
+}
+
+function formIncome(){
+  openSheet(`
+    <div class="sheet-header"><h2>আয় যোগ করুন</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    ${categoryDatalist('Income','incomeCats')}
+    <div class="field"><label>তারিখ</label><input type="date" id="f_date" value="${todayISO()}"></div>
+    <div class="field"><label>ক্যাটাগরি</label><input list="incomeCats" id="f_cat" placeholder="যেমন: বেতন, বোনাস"></div>
+    <div class="field"><label>পরিমাণ</label><input type="number" id="f_amount" placeholder="৳"></div>
+    <div class="field"><label>নোট</label><textarea id="f_note" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitIncome()">সংরক্ষণ করুন</button>
+  `);
+}
+async function submitIncome(){
+  const payload = { Date: val('f_date'), Category: val('f_cat'), Amount: val('f_amount'), Note: val('f_note') };
+  if(!payload.Category || !payload.Amount){ toast('ক্যাটাগরি ও পরিমাণ আবশ্যক','error'); return; }
+  const res = await postAction('Income','add',payload);
+  if(res.ok){ closeSheet(); toast('আয় যোগ হয়েছে','success'); await fetchAll(); }
+}
+
+function formExpense(){
+  openSheet(`
+    <div class="sheet-header"><h2>খরচ যোগ করুন</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    ${categoryDatalist('Expense','expenseCats')}
+    <div class="field"><label>তারিখ</label><input type="date" id="f_date" value="${todayISO()}"></div>
+    <div class="field"><label>ক্যাটাগরি</label><input list="expenseCats" id="f_cat" placeholder="যেমন: বাজার, ভাড়া"></div>
+    <div class="field"><label>পরিমাণ</label><input type="number" id="f_amount" placeholder="৳"></div>
+    <div class="field"><label>নোট</label><textarea id="f_note" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitExpense()">সংরক্ষণ করুন</button>
+  `);
+}
+async function submitExpense(){
+  const payload = { Date: val('f_date'), Category: val('f_cat'), Amount: val('f_amount'), Note: val('f_note') };
+  if(!payload.Category || !payload.Amount){ toast('ক্যাটাগরি ও পরিমাণ আবশ্যক','error'); return; }
+  const res = await postAction('Expense','add',payload);
+  if(res.ok){ closeSheet(); toast('খরচ যোগ হয়েছে','success'); await fetchAll(); }
+}
+
+function formProduction(){
+  openSheet(`
+    <div class="sheet-header"><h2>প্রোডাকশন এন্ট্রি</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    <div class="segmented" id="prodType">
+      <button class="active" data-t="Work">কাজ (Work)</button>
+      <button data-t="Withdrawal">উত্তোলন</button>
+    </div>
+    <div class="field" style="margin-top:14px;"><label>তারিখ</label><input type="date" id="f_date" value="${todayISO()}"></div>
+    <div id="workFields">
+      <div class="field"><label>কাজের নাম</label><input id="f_workname" placeholder="যেমন: শার্ট অর্ডার"></div>
+      <div class="row">
+        <div class="field"><label>সাইজ</label><input id="f_size"></div>
+        <div class="field"><label>রং</label><input id="f_color"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>পিস</label><input type="number" id="f_pcs" oninput="calcDozen()"></div>
+        <div class="field"><label>ডজন (অটো)</label><input type="number" id="f_dozen" readonly></div>
+      </div>
+      <div class="field"><label>রেট (প্রতি ডজন)</label><input type="number" id="f_rate" oninput="calcDozen()"></div>
+      <div class="field"><label>মোট বিল (অটো)</label><input type="number" id="f_earned" readonly></div>
+    </div>
+    <div id="withdrawFields" style="display:none;">
+      <div class="field"><label>গৃহীত পরিমাণ</label><input type="number" id="f_received"></div>
+    </div>
+    <div class="field"><label>নোট</label><textarea id="f_note" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitProduction()">সংরক্ষণ করুন</button>
+  `);
+  document.querySelectorAll('#prodType button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#prodType button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const isWork = b.dataset.t==='Work';
+      document.getElementById('workFields').style.display = isWork?'block':'none';
+      document.getElementById('withdrawFields').style.display = isWork?'none':'block';
+    });
+  });
+}
+function calcDozen(){
+  const pcs = Number(val('f_pcs'))||0;
+  const rate = Number(val('f_rate'))||0;
+  const dozen = pcs/12;
+  document.getElementById('f_dozen').value = dozen.toFixed(2);
+  document.getElementById('f_earned').value = (dozen*rate).toFixed(0);
+}
+async function submitProduction(){
+  const type = document.querySelector('#prodType button.active').dataset.t;
+  let payload;
+  if(type==='Work'){
+    payload = {
+      Date: val('f_date'), Type:'Work', 'Work Name': val('f_workname'),
+      Size: val('f_size'), Color: val('f_color'), Pcs: val('f_pcs'),
+      Dozen: val('f_dozen'), Rate: val('f_rate'), Earned: val('f_earned'),
+      Received: 0, Note: val('f_note')
+    };
+  } else {
+    payload = {
+      Date: val('f_date'), Type:'Withdrawal', 'Work Name':'', Size:'', Color:'',
+      Pcs:0, Dozen:0, Rate:0, Earned:0, Received: val('f_received'), Note: val('f_note')
+    };
+  }
+  const res = await postAction('Production','add',payload);
+  if(res.ok){ closeSheet(); toast('প্রোডাকশন এন্ট্রি যোগ হয়েছে','success'); await fetchAll(); }
+}
+
+function formLoan(){
+  openSheet(`
+    <div class="sheet-header"><h2>লোন এন্ট্রি</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    <div class="field"><label>তারিখ</label><input type="date" id="f_date" value="${todayISO()}"></div>
+    <div class="field"><label>বিবরণ</label><input id="f_desc"></div>
+    <div class="row">
+      <div class="field"><label>লোন নেওয়া</label><input type="number" id="f_taken" placeholder="0"></div>
+      <div class="field"><label>লোন পরিশোধ</label><input type="number" id="f_paid" placeholder="0"></div>
+    </div>
+    <div class="field"><label>নোট</label><textarea id="f_note" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitLoan()">সংরক্ষণ করুন</button>
+  `);
+}
+async function submitLoan(){
+  const payload = { Date: val('f_date'), Description: val('f_desc'), 'Loan Taken': val('f_taken')||0, 'Loan Paid': val('f_paid')||0, Note: val('f_note') };
+  const res = await postAction('Loan','add',payload);
+  if(res.ok){ closeSheet(); toast('লোন এন্ট্রি যোগ হয়েছে','success'); await fetchAll(); }
+}
+
+function openNewFund(){
+  openSheet(`
+    <div class="sheet-header"><h2>নতুন ফান্ড</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    <div class="field"><label>ফান্ডের নাম</label><input id="f_fundname" placeholder="যেমন: ঈদ শপিং"></div>
+    <div class="field"><label>টার্গেট বাজেট</label><input type="number" id="f_target"></div>
+    <button class="btn btn-primary btn-block" onclick="submitFund()">তৈরি করুন</button>
+  `);
+}
+async function submitFund(){
+  const payload = { Date: todayISO(), 'Fund Name': val('f_fundname'), 'Target Budget': val('f_target')||0, Status:'Active' };
+  if(!payload['Fund Name']){ toast('ফান্ডের নাম দিন','error'); return; }
+  const res = await postAction('Fund','add',payload);
+  if(res.ok){ closeSheet(); toast('ফান্ড তৈরি হয়েছে','success'); await fetchAll(); }
+}
+
+function openFundTxn(fundId, type){
+  openSheet(`
+    <div class="sheet-header"><h2>${type==='In'?'ফান্ডে জমা':'ফান্ড থেকে খরচ'}</h2><button class="icon-btn" onclick="closeSheet()">✕</button></div>
+    <div class="field"><label>তারিখ</label><input type="date" id="f_date" value="${todayISO()}"></div>
+    <div class="field"><label>বিবরণ / ক্যাটাগরি</label><input id="f_cat"></div>
+    <div class="field"><label>পরিমাণ</label><input type="number" id="f_amount"></div>
+    <div class="field"><label>নোট</label><textarea id="f_note" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitFundTxn('${fundId}','${type}')">সংরক্ষণ করুন</button>
+  `);
+}
+async function submitFundTxn(fundId, type){
+  const payload = { Date: val('f_date'), 'Fund ID': fundId, Type: type, 'Category/Note': val('f_cat'), Amount: val('f_amount')||0, Note: val('f_note') };
+  if(!payload.Amount){ toast('পরিমাণ দিন','error'); return; }
+  const res = await postAction('Fund_Transaction','add',payload);
+  if(res.ok){ closeSheet(); toast('লেনদেন যোগ হয়েছে','success'); await fetchAll(); }
+}
+
+function val(id){ return document.getElementById(id).value; }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+document.getElementById('fabAdd').addEventListener('click', openAddMenu);
+document.getElementById('newFundBtn').addEventListener('click', openNewFund);
+
+/* Expense range chips */
+document.querySelectorAll('#rangeChips .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#rangeChips .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    currentRange = chip.dataset.range;
+    document.getElementById('customRange').style.display = currentRange==='custom' ? 'flex':'none';
+    renderExpenseAnalytics();
+  });
+});
+document.getElementById('rangeFrom').addEventListener('change', renderExpenseAnalytics);
+document.getElementById('rangeTo').addEventListener('change', renderExpenseAnalytics);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('exportPdfBtn').addEventListener('click', exportPDF);
+
+/* History filter + search */
+document.querySelectorAll('#historyTabs .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#historyTabs .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    historyFilter = chip.dataset.filter;
+    renderHistory();
+  });
+});
+document.getElementById('searchInput').addEventListener('input', e=>{
+  searchTerm = e.target.value;
+  renderHistory();
+});
+
+/* ============================================================
+   THEME
+   ============================================================ */
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
+  const icon = document.getElementById('themeIcon');
+  icon.innerHTML = theme==='dark'
+    ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>'
+    : '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+  // Re-render charts so their label colors update
+  if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+}
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light':'dark';
+  applyTheme(cur);
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.addEventListener('online', ()=>fetchAll(true));
+window.addEventListener('offline', ()=>setSyncState('offline'));
+
+(function init(){
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+  applyTheme(savedTheme);
+
+  const hadCache = loadCache();
+  if(hadCache) renderAll();
+  fetchAll(hadCache); // toast only if we already had something to compare against
+})();
+
+/* ============================================================
+   SERVICE WORKER REGISTRATION
+   ============================================================ */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
